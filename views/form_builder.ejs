@@ -1,0 +1,433 @@
+<%- include('partials/header', { title: form ? '编辑表单' : '创建新表单' }) %>
+
+<div class="container mx-auto py-10 flex space-x-6">
+    <!-- 表单创建部分 -->
+    <div class="w-1/2">
+        <h1 class="text-3xl font-bold text-blue-800 mb-6"><%= form ? '编辑表单' : '创建新表单' %></h1>
+        <form id="formBuilder" action="<%= form ? '/admin/forms/' + form.id + '/edit' : '/admin/forms/create' %>" method="POST">
+            <div class="mb-6">
+                <label class="block text-lg font-medium text-gray-700">表单名称</label>
+                <input type="text" name="form_name" value="<%= form ? form.name : '' %>" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" required oninput="updateFormPreview()">
+            </div>
+
+            <div id="fields-container" class="mb-6 space-y-4">
+                <% if (form && form.fields) { %>
+                    <% form.fields.forEach(function(field, index) { %>
+                        <div class="field-item bg-white p-4 rounded-lg shadow-sm border" data-index="<%= index %>">
+                            <div class="flex justify-between items-center">
+                                <div class="text-lg font-medium"><%= field.field_name %> (<%= field.field_type %>)</div>
+                                <div class="flex space-x-2">
+                                    <button type="button" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600" onclick="removeField(this)">删除</button>
+                                    <button type="button" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600" onclick="toggleDetails(this)">编辑</button>
+                                </div>
+                            </div>
+                            <div class="field-details mt-4 hidden">
+                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">字段名称</label>
+                                        <input type="text" name="field_name[]" value="<%= field.field_name %>" class="w-full px-4 py-2 border rounded-lg focus:outline-none" required oninput="updateFormPreview()">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">字段类型</label>
+                                        <select name="field_type[]" class="w-full px-4 py-2 border rounded-lg focus:outline-none" required onchange="toggleColumnInput(this); updateFormPreview();">
+                                            <option value="text" <%= field.field_type === 'text' ? 'selected' : '' %>>文本</option>
+                                            <option value="radio" <%= field.field_type === 'radio' ? 'selected' : '' %>>单选</option>
+                                            <option value="dropdown" <%= field.field_type === 'dropdown' ? 'selected' : '' %>>下拉选择</option>
+                                            <option value="single_dropdown" <%= field.field_type === 'single_dropdown' ? 'selected' : '' %>>一级下拉</option>
+                                            <option value="double_dropdown" <%= field.field_type === 'double_dropdown' ? 'selected' : '' %>>二级下拉</option>
+                                            <option value="datetime" <%= field.field_type === 'datetime' ? 'selected' : '' %>>日期时间</option>
+                                            <option value="phone" <%= field.field_type === 'phone' ? 'selected' : '' %>>联系电话</option>
+                                            <option value="address" <%= field.field_type === 'address' ? 'selected' : '' %>>地址</option>
+                                            <option value="image" <%= field.field_type === 'image' ? 'selected' : '' %>>上传图片</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">字段宽度 (%)</label>
+                                        <input type="number" name="field_width[]" value="<%= field.width || 100 %>" class="w-full px-4 py-2 border rounded-lg focus:outline-none" placeholder="宽度" min="10" max="100" oninput="updateFormPreview()">
+                                    </div>
+                                    <div class="field-columns" style="<%= field.field_type !== 'radio' ? 'display:none;' : '' %>">
+                                        <label class="block text-sm font-medium text-gray-700">单选按钮列数</label>
+                                        <input type="number" name="field_columns[]" value="<%= field.columns || 1 %>" class="w-full px-4 py-2 border rounded-lg focus:outline-none" placeholder="列数" min="1" max="4" oninput="updateFormPreview()">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">选项（使用逗号分隔，非必填）</label>
+                                    <textarea name="options[]" class="w-full px-4 py-2 border rounded-lg focus:outline-none" placeholder="选项" oninput="updateFormPreview()"><%= field.options ? field.options.join(',') : '' %></textarea>
+                                    <button type="button" class="mt-2 bg-gray-300 text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-400 batch-edit-btn" onclick="openBatchEdit(this)">批量编辑</button>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } %>
+            </div>
+            
+            <div class="flex justify-between items-center">
+                <button type="button" id="add-field" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">添加字段</button>
+                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"><%= form ? '更新表单' : '创建表单' %></button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 表单预览部分 -->
+    <div id="formPreview" class="w-1/2 bg-gray-100 p-4 rounded-lg shadow-inner sticky top-4 h-full relative">
+        <h2 class="text-lg font-bold mb-4">表单预览</h2>
+    
+        <!-- 模拟手机框 -->
+        <div class="relative mx-auto bg-white rounded-lg shadow-md overflow-hidden" style="max-width: 375px; border: 16px solid black; border-radius: 36px; padding: 20px;">
+            <div class="absolute top-0 left-0 w-full h-12 bg-gray-300 rounded-t-lg"></div> <!-- 顶部模拟手机边框 -->
+            x
+            <!-- 模拟的表单内容区域 -->
+            <div id="previewContainer" class="bg-white p-4 rounded-lg shadow-md mt-12">
+                <!-- 这里的内容会动态更新 -->
+            </div>
+    
+            <div class="absolute bottom-0 left-0 w-full h-12 bg-gray-300 rounded-b-lg"></div> <!-- 底部模拟手机边框 -->
+        </div>
+    </div>
+	
+</div>
+
+<!-- 批量编辑弹窗 -->
+<div id="batchEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-4xl w-full max-h-screen overflow-auto"> <!-- 增大宽度并限制最大高度 -->
+        <h2 class="text-xl font-semibold mb-4">批量编辑菜单项</h2>
+        <div class="flex space-x-6">
+            <!-- 批量编辑文本框 -->
+            <textarea id="batchEditTextarea" class="w-1/2 h-80 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 overflow-y-auto" placeholder="每行代表一个一级菜单，行前插入空格表示该项为二级菜单"></textarea>
+
+            <!-- 实时预览区域 -->
+            <div id="dropdownPreview" class="w-1/2 bg-gray-100 p-4 rounded-lg shadow-inner h-80 overflow-y-auto"> <!-- 设定高度并启用滚动 -->
+                <h3 class="text-lg font-medium mb-2">下拉菜单预览</h3>
+                <select class="w-full px-4 py-2 border rounded-lg">
+                    <option disabled selected>请选择</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mt-4 flex justify-end">
+            <button id="saveBatchEdit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">保存</button>
+            <button id="cancelBatchEdit" class="ml-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">取消</button>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
+
+<script>
+    function openBatchEdit(button) {
+        const fieldDiv = button.closest('.field-item');
+        const textarea = fieldDiv.querySelector('textarea[name="options[]"]');
+        const fieldType = fieldDiv.querySelector('select[name="field_type[]"]').value;
+    
+        let options = textarea.value.split(',');
+    
+        if (fieldType === 'double_dropdown') {
+            // 针对二级下拉菜单，处理选项格式
+            options = options.map(option => {
+                const [main, sub] = option.split(':');
+                if (sub) {
+                    return `${main}:${sub.split('|').join(', ')}`;
+                }
+                return main;
+            });
+        }
+    
+        // 显示批量编辑窗口并设置其数据
+        document.getElementById('batchEditTextarea').value = options.join('\n');
+        document.getElementById('batchEditModal').classList.remove('hidden');
+        document.getElementById('batchEditModal').dataset.targetTextarea = textarea.name;
+        document.getElementById('batchEditModal').dataset.targetFieldDivIndex = Array.from(document.querySelectorAll('.field-item')).indexOf(fieldDiv);
+        document.getElementById('batchEditModal').dataset.fieldType = fieldType;
+
+        // 初始化预览区域
+        updateDropdownPreview(options.join('\n'), fieldType);
+    }
+
+    function updateDropdownPreview(rawText, fieldType) {
+        const dropdownPreview = document.getElementById('dropdownPreview');
+        dropdownPreview.innerHTML = '<p class="text-gray-500 mb-2">预览效果：</p>'; // 添加提示
+
+        const previewList = document.createElement('ul'); // 使用 ul 列表
+        previewList.className = 'preview-list';
+
+        let currentMainOption = null;
+
+        rawText.split('\n').forEach(line => {
+            const trimmedLine = line.trim();
+    
+            if (line.startsWith(' ') && fieldType === 'double_dropdown') {
+                // 子选项（以空格开头表示）
+                const subOption = trimmedLine;
+                if (currentMainOption) {
+                    const subListItem = document.createElement('li');
+                    subListItem.innerHTML = `&nbsp;&nbsp;&nbsp;&nbsp;- ${subOption}`; // 子选项缩进并使用 - 前缀
+                    currentMainOption.querySelector('ul').appendChild(subListItem);
+                }
+            } else {
+                // 主选项
+                const mainListItem = document.createElement('li');
+                mainListItem.innerHTML = `+ ${trimmedLine}`; // 主选项使用 + 前缀
+                const subList = document.createElement('ul'); // 创建一个 ul 来包含子选项
+                mainListItem.appendChild(subList);
+                previewList.appendChild(mainListItem);
+                currentMainOption = mainListItem;
+            }
+        });
+
+        dropdownPreview.appendChild(previewList);
+    }
+
+    function createOptionElement(optionText) {
+        const option = document.createElement('option');
+        option.textContent = optionText;
+        return option;
+    }
+
+    function saveBatchEdit() {
+        const batchEditTextarea = document.getElementById('batchEditTextarea');
+        const targetFieldDivIndex = document.getElementById('batchEditModal').dataset.targetFieldDivIndex;
+        const targetFieldDiv = document.querySelectorAll('.field-item')[targetFieldDivIndex];
+        const targetTextarea = targetFieldDiv.querySelector('textarea[name="options[]"]');
+        const fieldType = document.getElementById('batchEditModal').dataset.fieldType;
+    
+        const rawText = batchEditTextarea.value.trim();
+        let options = [];
+    
+        if (fieldType === 'double_dropdown') {
+            let currentMainOption = null;
+            const groupedOptions = {};
+    
+            rawText.split('\n').forEach(line => {
+                const trimmedLine = line.trim();
+                if (line.startsWith(' ')) {
+                    // 如果以空格开始，表示这是二级选项
+                    if (currentMainOption) {
+                        groupedOptions[currentMainOption].push(trimmedLine);
+                    }
+                } else {
+                    // 这是一个主选项
+                    currentMainOption = trimmedLine;
+                    groupedOptions[currentMainOption] = [];
+                }
+            });
+    
+            // 构建选项数组
+            options = Object.keys(groupedOptions).map(mainOption => {
+                if (groupedOptions[mainOption].length > 0) {
+                    return `${mainOption}:${groupedOptions[mainOption].join('|')}`;
+                }
+                return mainOption;
+            });
+        } else if (fieldType === 'single_dropdown') {
+            // 单级下拉菜单
+            options = rawText.split('\n').map(line => line.trim());
+        }
+    
+        targetTextarea.value = options.join(',');
+    
+        // 隐藏批量编辑窗口
+        document.getElementById('batchEditModal').classList.add('hidden');
+        updateFormPreview();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateFormPreview();
+
+        document.getElementById('add-field').addEventListener('click', function() {
+            addField();
+        });
+
+        document.getElementById('batchEditTextarea').addEventListener('input', function() {
+            const rawText = this.value;
+            const fieldType = document.getElementById('batchEditModal').dataset.fieldType;
+            updateDropdownPreview(rawText, fieldType); // 实时更新预览效果
+        });
+
+        document.getElementById('saveBatchEdit').addEventListener('click', function() {
+            saveBatchEdit();
+        });
+
+        document.getElementById('cancelBatchEdit').addEventListener('click', function() {
+            document.getElementById('batchEditModal').classList.add('hidden');
+        });
+
+        function updateFormPreview() {
+            const formName = document.querySelector('input[name="form_name"]').value || '未命名表单';
+            const fields = document.querySelectorAll('.field-item');
+            const previewContainer = document.getElementById('previewContainer');
+            
+            // 添加 banner 和标题
+            previewContainer.innerHTML = `
+                <div class="w-full mb-4">
+                    <img src="banner.jpg" alt="Form Banner" class="w-full h-48 object-cover rounded-lg shadow-md">
+                </div>
+                <h3 class="text-lg font-medium mb-4 text-center">${formName}</h3>
+            `;
+
+            // Wrap in phone-like view
+            const phoneFrame = document.createElement('div');
+            phoneFrame.className = 'phone-frame p-4 bg-white rounded-lg shadow-lg max-w-md mx-auto';
+            previewContainer.appendChild(phoneFrame);
+
+            // 遍历字段并生成 HTML
+            fields.forEach(field => {
+                const fieldName = field.querySelector('input[name="field_name[]"]').value || '未命名字段';
+                const fieldType = field.querySelector('select[name="field_type[]"]').value;
+                const fieldWidth = field.querySelector('input[name="field_width[]"]').value || 100;
+                const options = field.querySelector('textarea[name="options[]"]').value.trim().split('\n');
+                
+                let fieldHtml = '';
+
+                switch (fieldType) {
+                    case 'text':
+                        fieldHtml = `<input type="text" class="w-full px-4 py-2 border rounded-lg" placeholder="${fieldName}">`;
+                        break;
+                    case 'radio':
+                        fieldHtml = options.map(option => `
+                            <label class="block">
+                                <input type="radio" name="${fieldName}" class="mr-2">${option.trim()}
+                            </label>`).join('');
+                        break;
+                    case 'dropdown':
+                    case 'single_dropdown':
+                        fieldHtml = `<select class="w-full px-4 py-2 border rounded-lg">
+                            <option disabled selected>${fieldName}</option>
+                            ${options.map(option => `<option>${option.trim()}</option>`).join('')}
+                        </select>`;
+                        break;
+                    case 'double_dropdown':
+                        fieldHtml = '<select class="w-full px-4 py-2 border rounded-lg">';
+                        let currentOptgroup = '';
+                        options.forEach(option => {
+                            if (option.startsWith(' ')) {
+                                const subOption = option.trim();
+                                if (currentOptgroup) {
+                                    fieldHtml += `<option>${subOption}</option>`;
+                                }
+                            } else {
+                                if (currentOptgroup) {
+                                    fieldHtml += '</optgroup>';
+                                }
+                                const mainOption = option.trim();
+                                fieldHtml += `<optgroup label="${mainOption}">`;
+                                currentOptgroup = mainOption;
+                            }
+                        });
+                        if (currentOptgroup) {
+                            fieldHtml += '</optgroup>';
+                        }
+                        fieldHtml += '</select>';
+                        break;
+                    case 'datetime':
+                        fieldHtml = `<input type="datetime-local" class="w-full px-4 py-2 border rounded-lg">`;
+                        break;
+                    case 'phone':
+                        fieldHtml = `<input type="tel" class="w-full px-4 py-2 border rounded-lg" placeholder="${fieldName}">`;
+                        break;
+                    case 'address':
+                        fieldHtml = `<input type="text" class="w-full px-4 py-2 border rounded-lg" placeholder="${fieldName}">`;
+                        break;
+                    case 'image':
+                        fieldHtml = `<input type="file" class="w-full px-4 py-2 border rounded-lg" accept="image/*">`;
+                        break;
+                }
+
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = `mb-4`;
+                fieldDiv.style.width = `${fieldWidth}%`;
+                fieldDiv.innerHTML = `<label class="block text-sm font-medium mb-2">${fieldName}</label>${fieldHtml}`;
+                phoneFrame.appendChild(fieldDiv);
+            });
+        }
+
+        function addField() {
+            const fieldsContainer = document.getElementById('fields-container');
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = "field-item bg-white p-4 rounded-lg shadow-sm border";
+
+            fieldDiv.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div class="text-lg font-medium">未命名字段 (text)</div>
+                    <div class="flex space-x-2">
+                        <button type="button" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600" onclick="removeField(this)">删除</button>
+                        <button type="button" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600" onclick="toggleDetails(this)">编辑</button>
+                    </div>
+                </div>
+                <div class="field-details mt-4 hidden">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">字段名称</label>
+                            <input type="text" name="field_name[]" class="w-full px-4 py-2 border rounded-lg focus:outline-none" placeholder="字段名称" required oninput="updateFormPreview()">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">字段类型</label>
+                            <select name="field_type[]" class="w-full px-4 py-2 border rounded-lg focus:outline-none" required onchange="toggleColumnInput(this); updateFormPreview();">
+                                <option value="text">文本</option>
+                                <option value="radio">单选</option>
+                                <option value="dropdown">下拉选择</option>
+                                <option value="single_dropdown">一级下拉</option>
+                                <option value="double_dropdown">二级下拉</option>
+                                <option value="datetime">日期时间</option>
+                                <option value="phone">联系电话</option>
+                                <option value="address">地址</option>
+                                <option value="image">上传图片</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">字段宽度 (%)</label>
+                            <input type="number" name="field_width[]" value="100" class="w-full px-4 py-2 border rounded-lg focus:outline-none" placeholder="宽度" min="10" max="100" oninput="updateFormPreview()">
+                        </div>
+                        <div class="field-columns" style="display:none;">
+                            <label class="block text-sm font-medium text-gray-700">单选按钮列数</label>
+                            <input type="number" name="field_columns[]" value="1" class="w-full px-4 py-2 border rounded-lg focus:outline-none" placeholder="列数" min="1" max="4" oninput="updateFormPreview()">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">选项（使用逗号分隔，非必填）</label>
+                        <textarea name="options[]" class="w-full px-4 py-2 border rounded-lg focus:outline-none" placeholder="选项" oninput="updateFormPreview()"></textarea>
+                        <button type="button" class="mt-2 bg-gray-300 text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-400 batch-edit-btn" onclick="openBatchEdit(this)">批量编辑</button>
+                    </div>
+                </div>
+            `;
+            fieldsContainer.appendChild(fieldDiv);
+            updateFormPreview();
+        }
+
+        window.removeField = function(button) {
+            const fieldItem = button.closest('.field-item');
+            fieldItem.parentNode.removeChild(fieldItem);
+            updateFormPreview();
+        };
+
+        window.toggleDetails = function(button) {
+            const fieldDetails = button.closest('.field-item').querySelector('.field-details');
+            fieldDetails.classList.toggle('hidden');
+        };
+
+        window.toggleColumnInput = function(select) {
+            const fieldItem = select.closest('.field-item');
+            const columnInput = fieldItem.querySelector('.field-columns');
+            const batchEditButton = fieldItem.querySelector('.batch-edit-btn');
+
+            if (select.value === 'radio') {
+                columnInput.style.display = 'block';
+            } else {
+                columnInput.style.display = 'none';
+            }
+
+            // 更新批量编辑按钮的显示逻辑
+            if (select.value === 'single_dropdown' || select.value === 'double_dropdown') {
+                batchEditButton.classList.remove('hidden');
+            } else {
+                batchEditButton.classList.add('hidden');
+            }
+
+            updateFormPreview();
+        };
+    });
+
+</script>

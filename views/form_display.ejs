@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= form.name %> | 表单提交</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0f7fa, #80deea);
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            letter-spacing: 0.02em;
+        }
+
+        .form-container {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 2rem 3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .form-input,
+        .form-select {
+            margin-bottom: 1.5rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid #eaeaea;
+            width: 100%;
+        }
+
+        .form-button {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            width: 100%;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .form-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .form-banner {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container mx-auto py-10">
+    <div class="form-container">
+        <img src="../public/img/form_banner.png" alt="Banner" class="form-banner">
+
+        <h1 class="text-3xl font-bold text-blue-800 mb-6 text-center"><%= form.name %></h1>
+
+        <!-- 添加表单的action和method属性 -->
+        <form action="/forms/<%= form.id %>/submit" method="POST">
+        <% form.fields.forEach(field => { %>
+        <div class="mb-4">
+            <label class="block text-lg font-medium text-gray-700"><%= field.field_name %></label>
+            <% if (field.field_type === 'text') { %>
+            <input type="text" name="<%= field.field_name %>" class="form-input" placeholder="请输入<%= field.field_name %>" required>
+            <% } else if (field.field_type === 'radio') { %>
+            <% (field.options ? JSON.parse(field.options) : []).forEach(option => { %>
+            <label class="inline-flex items-center mt-2">
+                <input type="radio" name="<%= field.field_name %>" value="<%= option %>" class="form-radio text-blue-600">
+                <span class="ml-2"><%= option %></span>
+            </label><br>
+            <% }) %>
+            <% } else if (field.field_type === 'select' || field.field_type === 'dropdown' || field.field_type === 'single_dropdown') { %>
+            <select name="<%= field.field_name %>" class="form-select" required>
+                <option value="" disabled selected>请选择<%= field.field_name %></option>
+                <% (field.options ? JSON.parse(field.options) : []).forEach(option => { %>
+                <option value="<%= option %>"><%= option %></option>
+                <% }) %>
+            </select> 
+            <% } else if (field.field_type === 'double_dropdown') { %>
+
+            <!-- 一级菜单 -->
+            <select id="mainSelect-<%= field.field_name %>" name="mainSelect-<%= field.field_name %>" class="form-select" required>
+                <option value="" disabled selected>请选择<%= field.field_name %>（一级菜单）</option>
+                <% 
+                    let optionsArray = [];
+                    try {
+                        optionsArray = JSON.parse(field.options); // 确保解析为正确的数组
+                    } catch (e) {
+                        console.error('Options parsing error:', e);
+                    }
+            
+                    optionsArray.forEach(option => {
+                        const [mainOption, subOptions] = option.split(':');
+                %>
+                <option value="<%= mainOption.trim() %>"><%= mainOption.trim() %></option>
+                <% }); %>
+            </select>
+			
+            <!-- 二级菜单 -->
+            <select id="subSelect-<%= field.field_name %>" name="subSelect-<%= field.field_name %>" class="form-select" disabled required>
+                <option value="" disabled selected>请选择对应的二级菜单</option>
+            </select>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    let optionsArray = <%- JSON.stringify(field.options ? JSON.parse(field.options) : []) %>;
+                    const optionsMap = optionsArray.reduce((acc, option) => {
+                        const [mainOption, subOptions] = option.split(":");
+                        acc[mainOption.trim()] = subOptions ? subOptions.split("|").map(opt => opt.trim()) : [];
+                        return acc;
+                    }, {});
+
+                    function updateSubOptions(fieldName) {
+                        const mainSelect = document.getElementById(`mainSelect-${fieldName}`);
+                        const subSelect = document.getElementById(`subSelect-${fieldName}`);
+                        subSelect.innerHTML = '<option value="" disabled selected>请选择对应的二级菜单</option>';
+
+                        if (mainSelect.value) {
+                            const subOptions = optionsMap[mainSelect.value] || [];
+                            subOptions.forEach(subOption => {
+                                const optionElement = document.createElement('option');
+                                optionElement.value = subOption;
+                                optionElement.textContent = subOption;
+                                subSelect.appendChild(optionElement);
+                            });
+                            subSelect.disabled = false;
+                        } else {
+                            subSelect.disabled = true;
+                        }
+                    }
+
+                    document.querySelectorAll('select[id^="mainSelect-"]').forEach(function(select) {
+                        select.addEventListener('change', function() {
+                            const fieldName = this.id.split('-')[1];
+                            updateSubOptions(fieldName);
+                        });
+                    });
+                });
+            </script>
+
+            <% } else if (field.field_type === 'datetime') { %>
+            <input type="datetime-local" name="<%= field.field_name %>" class="form-input" required>
+            <% } else if (field.field_type === 'phone') { %>
+            <input type="tel" name="<%= field.field_name %>" pattern="^(\+\d{1,3}[- ]?)?\d{10}$" placeholder="请输入电话号码" class="form-input" required>
+            <small class="text-gray-600">格式：1234567890 或 +861234567890</small>
+            <% } else if (field.field_type === 'address') { %>
+            <input type="text" name="<%= field.field_name %>" placeholder="请输入详细地址" class="form-input" required>
+            <% } else if (field.field_type === 'image') { %>
+            <input type="file" name="<%= field.field_name %>" accept="image/*" class="form-input" required>
+            <small class="text-gray-600">支持的格式：JPEG, PNG, GIF</small>
+            <% } %>
+        </div>
+        <% }) %>
+        <button type="submit" class="form-button">提交表单</button>
+        </form>
+    </div>
+</div>
+
+<!-- 模态窗口 -->
+<div id="successModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+        <h2 class="text-2xl font-bold mb-4 text-green-600">表单提交成功！</h2>
+        <p class="mb-6">您的表单已成功提交。感谢您的反馈！</p>
+        <button onclick="closeModal()" class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">关闭</button>
+    </div>
+</div>
+
+<script>
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('submitted') === 'true') {
+            document.getElementById('successModal').classList.remove('hidden');
+        }
+    };
+
+    function closeModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        const url = new URL(window.location);
+        url.searchParams.delete('submitted');
+        window.history.replaceState({}, document.title, url);
+    }
+
+    document.querySelector('form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+		
+		// 打印提交的数据，调试二级下拉菜单
+		for (let [key, value] of formData.entries()) {
+		        console.log(`${key}: ${value}`);
+		    }
+		
+        const formAction = this.action;
+        const formMethod = this.method || 'POST';
+
+        fetch(formAction, {
+            method: formMethod,
+            body: formData,
+        }).then(response => {
+            if (response.ok) {
+                const url = new URL(window.location);
+                url.searchParams.set('submitted', 'true');
+                window.history.replaceState({}, document.title, url);
+                document.getElementById('successModal').classList.remove('hidden');
+            } else {
+                console.error('提交表单时出错: ', response.statusText);
+            }
+        }).catch(error => {
+            console.error('表单提交请求失败:', error);
+        });
+    });
+</script>
+
+<%- include('partials/footer') %>
+
+</body>
+
+</html>

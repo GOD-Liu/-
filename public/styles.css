@@ -1,0 +1,21 @@
+html, body {
+    height: 100%; /* 让页面高度撑满视口 */
+    margin: 0;    /* 清除默认的外边距 */
+    display: flex;
+    flex-direction: column; /* 使用 flexbox 布局 */
+}
+
+main {
+    flex: 1; /* 使 main 部分扩展以填满剩余空间 */
+}
+
+footer {
+    background-color: #1a202c; /* 使用 Tailwind CSS 的 bg-gray-800 */
+    color: white;
+    padding: 1rem;
+    width: 100%;
+    text-align: center;
+    flex-shrink: 0; /* 防止 footer 被压缩 */
+    margin-top: 12px; /* 根据需要调整上边距 */
+}
+

@@ -1,0 +1,103 @@
+<%- include('partials/header', { title: '查看提交数据' }) %>
+
+<div class="container mx-auto py-10">
+    <h1 class="text-3xl font-bold text-blue-800 mb-6">提交数据</h1>
+    
+    <table class="min-w-full bg-white border">
+        <thead>
+            <tr>
+                <% fields.forEach(field => { %>
+                    <th class="py-2 px-4 border-b text-left"><%= field.field_name %></th>
+                <% }) %>
+                <th class="py-2 px-4 border-b text-left">提交时间</th>
+                <th class="py-2 px-4 border-b text-left">操作</th> <!-- 操作列 -->
+            </tr>
+        </thead>
+        <tbody>
+            <% submissions.forEach(submission => { %>
+                <tr>
+                    <% 
+                        const data = JSON.parse(submission.submission_data); // 解析提交数据
+                        fields.forEach(field => { 
+                            const fieldName = field.field_name; // 字段名称
+                            let fieldValue = data[fieldName]; // 默认为常规字段的数据
+            
+                            // 检查是否为二级下拉菜单
+                            const mainSelectField = `mainSelect-${fieldName}`;
+                            const subSelectField = `subSelect-${fieldName}`;
+                            
+                            // 如果是二级下拉菜单，显示一级菜单和二级菜单的数据
+                            if (data[mainSelectField] || data[subSelectField]) {
+                                fieldValue = `一级: ${data[mainSelectField] || '无'}, 二级: ${data[subSelectField] || '无'}`;
+                            }
+                    %>
+                        <td class="py-2 px-4 border-b"><%= fieldValue %></td>
+                    <% }) %>
+                    <!-- 使用 formatted_submitted_at 来显示格式化后的提交时间 -->
+                    <td class="py-2 px-4 border-b"><%= submission.formatted_submitted_at %></td>
+                    <td class="py-2 px-4 border-b">
+                        <!-- 删除按钮 -->
+                        <button 
+                            class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 deleteButton"
+                            data-id="<%= submission.id %>"> 
+                            删除
+                        </button>
+                    </td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <form action="/admin/submissions/export" method="GET" class="mt-6">
+        <input type="hidden" name="formId" value="<%= formId %>">
+        <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">导出为Excel</button>
+    </form>
+
+    <button id="backButton" class="mt-6 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+        返回表单列表
+    </button>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    // 处理返回按钮点击事件
+    $('#backButton').on('click', function() {
+        // 发送 AJAX 请求来更新表单的 has_new_submissions 状态
+        $.ajax({
+            url: '/admin/forms/mark-viewed/<%= formId %>',
+            type: 'POST',
+            success: function() {
+                // AJAX 请求成功后，跳转回表单列表页面
+                window.location.href = '/admin/forms';
+            },
+            error: function() {
+                alert('标记表单为已查看时出错，请重试。');
+            }
+        });
+    });
+
+    // 处理删除按钮点击事件
+    $('.deleteButton').on('click', function() {
+        const submissionId = $(this).data('id');
+        console.log("Deleting submission with ID:", submissionId); // 调试输出
+        if (!submissionId) {
+            alert("删除数据时出错：未找到有效的提交 ID。");
+            return;
+        }
+        if (confirm('确定要删除这条数据吗？')) {
+            $.ajax({
+                url: `/admin/submissions/${submissionId}/delete`,
+                type: 'POST',
+                success: function() {
+                    window.location.reload();
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX error:", status, error); // 输出详细的错误信息
+                    alert('删除数据时出错，请重试。');
+                }
+            });
+        }
+    });
+</script>
+
+<%- include('partials/footer') %>

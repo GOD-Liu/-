@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> | 潍坊交运在线表单系统</title>
+    <!-- 引入 Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- 引入自定义样式 -->
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        html, body {
+            height: 100%; /* 确保页面高度占满视口 */
+            margin: 0;    /* 清除默认的外边距 */
+            display: flex;
+            flex-direction: column; /* 使用 flexbox 布局 */
+        }
+
+        main {
+            flex: 1; /* 使 main 部分扩展以填满剩余空间 */
+        }
+
+        footer {
+            background-color: #1a202c; /* 使用 Tailwind CSS 的 bg-gray-800 */
+            color: white;
+            padding: 1rem;
+            width: 100%;
+            text-align: center;
+            flex-shrink: 0; /* 防止 footer 被压缩 */
+            margin-top: 12px; /* 根据需要调整上边距 */
+        }
+    </style>
+	<script>
+	        function confirmLogout() {
+	            return confirm("确定要退出登录吗？");
+	        }
+	    </script>
+</head>
+<body class="bg-gray-100 flex flex-col min-h-screen">
+    <header class="bg-blue-800 text-white py-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">在线表单收集系统—潍坊交运</h1>
+            <nav>
+                <ul class="flex space-x-4">
+                    <li><a href="/admin/forms" class="hover:underline">表单列表</a></li>
+                    <li><a href="/admin/forms/create" class="hover:underline">创建表单</a></li>
+                    <li><a href="/logout" class="hover:underline" onclick="return confirmLogout()">退出登录</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container mx-auto py-6 flex-grow"> <!-- 使用 flex-grow 确保 main 部分占据剩余空间 -->

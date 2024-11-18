@@ -1,0 +1,311 @@
+<%- include('partials/header', { title: '表单管理' }) %>
+
+<style>
+/* 总反馈数的样式 */
+.feedback-count {
+    background-color: #f3f4f6; /* 浅灰色背景 */
+    color: #1f2937; /* 深灰色字体 */
+    font-weight: 600;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 1rem;
+    display: inline-block;
+}
+
+/* 新反馈数的样式：红色字体，简约动画 */
+.new-feedback-count {
+    color: #ef4444; /* 醒目的红色 */
+    font-weight: 600;
+    padding-left: 0.3rem;
+    font-size: 1rem;
+    animation: pulse 1.5s infinite; /* 闪烁动画效果 */
+}
+
+/* 轻微的脉冲动画 */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+</style>
+
+<div class="container mx-auto py-10">
+    <h1 class="text-3xl font-bold text-blue-800 mb-6">表单管理</h1>
+	
+    <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-700">表单列表</h2>
+            <!-- 搜索框 -->
+            <div class="relative">
+                <input type="text" id="searchInput" class="w-64 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="搜索表单名称...">
+                <svg class="absolute right-3 top-2.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16l4-4m0 0l4-4m-4 4h12M4 8v8" />
+                </svg>
+            </div>
+    </div>
+
+    <table class="min-w-full bg-white border table-auto">
+        <thead>
+            <tr class="bg-gray-200">
+                <th class="py-3 px-5 border-b w-1/12 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">表单 ID</th>
+                <th class="py-3 px-5 border-b w-4/12 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">表单名称</th>
+                <th class="py-3 px-5 border-b w-2/12 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">反馈数量</th>
+                <th class="py-3 px-5 border-b w-2/12 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">状态</th>
+                <th class="py-3 px-5 border-b w-3/12 text-center text-sm font-semibold text-gray-700 uppercase tracking-wider">操作</th>
+            </tr>
+        </thead>
+        <tbody id="formsTableBody"> 
+            <% forms.forEach(form => { %>
+            <tr class="hover:bg-gray-50 form-row"> 
+                <td class="py-2 px-4 border-b w-1/12 text-md font-medium text-gray-900"><%= form.id %></td>
+                <td class="py-2 px-4 border-b w-4/12 text-md font-medium text-gray-900 form-name"> 
+                    <a href="/admin/forms/<%= form.id %>/submissions" class="text-blue-600 hover:underline"><%= form.name %></a>
+                    <% if (form.has_new_submissions) { %>
+                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <svg class="-ml-1 mr-1.5 h-2 w-2 text-red-600 animate-ping" fill="currentColor" viewBox="0 0 8 8">
+                                <circle cx="4" cy="4" r="3"></circle>
+                            </svg>
+                            新反馈
+                        </span>
+                    <% } %>
+                </td>
+                
+                <!-- 反馈数量列 -->
+                <td class="py-2 px-4 border-b w-2/12 text-md font-bold text-gray-900">
+                    <!-- 总反馈数 -->
+                    <span class="feedback-count"><%= form.submission_count > 99 ? '99+' : form.submission_count %></span>
+                    <!-- 新增反馈数 -->
+                    <% if (form.new_feedback_count > 0) { %>
+                        <span class="new-feedback-count">(<%= form.new_feedback_count > 99 ? '99+' : form.new_feedback_count %>+)</span>
+                    <% } %>
+                </td>
+    
+                <!-- 表单状态列 -->
+                <td class="py-2 px-4 border-b w-2/12 text-md font-medium text-gray-900">
+                    <% if (form.status === 'published') { %>
+                    <span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <svg class="mr-1.5 h-2 w-2 text-green-600" fill="currentColor" viewBox="0 0 8 8">
+                            <circle cx="4" cy="4" r="3"></circle>
+                        </svg>
+                        已发布
+                    </span>
+                    <% } else { %>
+                    <span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <svg class="mr-1.5 h-2 w-2 text-red-600" fill="currentColor" viewBox="0 0 8 8">
+                            <circle cx="4" cy="4" r="3"></circle>
+                        </svg>
+                        未发布
+                    </span>
+                    <% } %>
+                </td>
+    
+                <!-- 操作列 -->
+                <td class="py-2 px-4 border-b w-3/12 text-center text-md font-medium text-gray-900">
+                    <div class="flex items-end justify-between space-x-2">
+                        <!-- 编辑按钮 -->
+                        <a href="/admin/forms/<%= form.id %>/edit" class="inline-flex items-center bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-4 py-2 rounded-md shadow-sm hover:from-yellow-500 hover:to-yellow-700 transition-all duration-200 ease-in-out text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12l-9 9m0 0h9m-9 0v-9m13-8h-6a2 2 0 00-2 2v6m6-6l2 2m0 0l-2 2m2-2h6" />
+                            </svg>
+                            编辑
+                        </a>
+    
+                        <!-- 发布/停止表单按钮 -->
+                        <% if (form.status === 'published') { %>
+                        <form action="/admin/forms/<%= form.id %>/close" method="POST" class="inline-block close-form">
+                            <button type="submit" class="inline-flex items-center bg-gradient-to-r from-red-400 to-red-600 text-white px-4 py-2 rounded-md shadow-sm hover:from-red-500 hover:to-red-700 transition-all duration-200 ease-in-out text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m4-4H8" />
+                                </svg>
+                                停止表单
+                            </button>
+                        </form>
+                        <% } else { %>
+                        <form action="/admin/forms/<%= form.id %>/publish" method="POST" class="inline-block publish-form">
+                            <button type="submit" class="inline-flex items-center bg-gradient-to-r from-green-400 to-green-600 text-white px-4 py-2 rounded-md shadow-sm hover:from-green-500 hover:to-green-700 transition-all duration-200 ease-in-out text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                发布表单
+                            </button>
+                        </form>
+                        <% } %>
+    
+                        <!-- 更多操作 -->
+                        <div class="relative inline-block text-left">
+                            <button type="button" id="menu-button-<%= form.id %>" class="menu-button inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm">
+                                更多操作
+                                <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <div id="menu-<%= form.id %>" class="menu hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
+                                <div class="py-1" role="none">
+                                    <a href="/admin/forms/<%= form.id %>/submissions" class="text-gray-700 block px-4 py-2 text-sm hover:bg-green-100 hover:text-green-700" role="menuitem" tabindex="-1">查看数据</a>
+                                    <a href="javascript:void(0);" class="text-blue-600 block px-4 py-2 text-sm hover:bg-blue-100 hover:text-blue-700" onclick="showCopyFormModal('<%= form.id %>')">复制表单</a>
+                                    <form action="/admin/forms/<%= form.id %>/delete" method="POST" role="none" class="w-full">
+                                        <button type="submit" class="text-red-600 block w-full text-left px-4 py-2 text-sm hover:bg-red-100 hover:text-red-700" onclick="return confirm('确定要删除这个表单吗？删除后无法恢复。')">删除</button>
+                                    </form>
+                                    <div class="flex items-center justify-between px-4 py-2">
+                                        <button type="button" class="text-yellow-600 text-sm hover:text-yellow-700 generate-qr" data-id="<%= form.id %>">生成二维码</button>
+                                        <select id="qrFormat" class="ml-2 bg-gray-50 border border-gray-300 text-gray-700 px-2 py-1 rounded-lg text-sm">
+                                            <option value="png">PNG</option>
+                                            <option value="svg">SVG</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <% }) %>
+        </tbody>
+    </table>
+</div>
+
+
+<!-- 复制表单模态框 -->
+<div id="copyFormModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-75 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-lg p-8 max-w-md mx-auto">
+        <h2 class="text-2xl font-semibold mb-4 text-blue-800">复制表单</h2>
+        <p class="mb-4 text-gray-600">请输入新表单的名称:</p>
+        <input type="text" id="newFormName" class="border border-gray-300 rounded-md p-3 w-full focus:ring focus:ring-blue-500 focus:border-blue-500 mb-4" />
+        <div class="mt-6 flex justify-end space-x-4">
+            <button id="cancelCopy" class="bg-gray-500 text-white py-2 px-6 rounded-lg shadow-md hover:bg-gray-600 transition-all duration-200">取消</button>
+            <button id="confirmCopy" class="bg-blue-600 text-white py-2 px-6 rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200">确认复制</button>
+        </div>
+    </div>
+</div>
+
+<!-- 下载二维码模态框 -->
+<div id="qrModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-75 flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg text-center max-w-md mx-auto">
+        <h2 class="text-2xl font-semibold text-blue-800 mb-6">二维码</h2>
+        <div id="qrcode" class="mb-6"></div>
+        <a id="downloadQR" href="#" download class="inline-block bg-green-500 text-white py-3 px-6 rounded-lg shadow-md hover:bg-green-600 transition-all duration-200">下载二维码</a>
+        <button id="closeModal" class="mt-4 inline-block bg-red-500 text-white py-3 px-6 rounded-lg shadow-md hover:bg-red-600 transition-all duration-200">关闭</button>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+	// 监听搜索框的输入事件
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const searchValue = this.value.toLowerCase();  // 获取搜索框输入的值
+        const rows = document.querySelectorAll('.form-row');  // 获取所有表单行
+
+        rows.forEach(row => {
+            const formName = row.querySelector('.form-name').textContent.toLowerCase();  // 获取表单名称
+            if (formName.includes(searchValue)) {
+                row.style.display = '';  // 显示匹配的表单行
+            } else {
+                row.style.display = 'none';  // 隐藏不匹配的表单行
+            }
+        });
+    });
+
+    $(document).ready(function() {
+        // 生成二维码
+        $('.generate-qr').on('click', function() {
+            const formId = $(this).data('id');
+            const format = $(this).closest('div').find('#qrFormat').val();
+
+            $.ajax({
+                url: `/admin/forms/${formId}/generate-qr?format=${format}`,
+                type: 'GET',
+                success: function(data) {
+                    $('#qrcode').html(data.qrHtml);
+                    $('#downloadQR').attr('href', data.qrDownloadUrl).attr('download', `qrcode.${format}`);
+                    $('#qrModal').removeClass('hidden');
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error generating QR code:", status, error);
+                    alert('生成二维码时出错，请重试。');
+                }
+            });
+        });
+
+        $('#closeModal').on('click', function() {
+            $('#qrModal').addClass('hidden');
+        });
+
+        // 显示复制表单模态框
+        window.showCopyFormModal = function(formId) {
+            const formName = $(`#menu-button-${formId}`).closest('tr').find('td:nth-child(2) a.text-blue-600').text().trim();
+            $('#newFormName').val(`${formName} 副本`);
+            $('#copyFormModal').removeClass('hidden');
+               
+            $('#confirmCopy').off('click').on('click', function() {
+                const newFormName = $('#newFormName').val();
+                console.log('Copy form confirmed, new form name:', newFormName);  // 调试信息
+        
+                // 发起复制表单的 AJAX 请求
+                $.post(`/admin/forms/${formId}/copy`, { newFormName: newFormName })
+                    .done(function(data) {
+                        console.log('Form copied successfully:', data);  // 调试信息
+                        alert('表单复制成功！');
+                        location.reload(); // 成功后刷新页面
+                    })
+                    .fail(function(error) {
+                        console.error('Error copying form:', error);  // 错误信息
+                        alert('复制表单时出错，请重试。');
+                    });
+            });
+            
+            $('#cancelCopy').on('click', function() {
+                $('#copyFormModal').addClass('hidden');
+            });
+        };
+
+        // 打开/关闭菜单
+        $('.menu-button').on('click', function(e) {
+            e.stopPropagation(); // Prevent menu button from triggering document click event
+            const menuId = $(this).attr('id').replace('menu-button-', 'menu-');
+            $('.menu').not(`#${menuId}`).addClass('hidden'); // Hide other menus
+            $(`#${menuId}`).toggleClass('hidden');
+        });
+
+        // 点击空白区域时关闭菜单
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.menu').length && !$(e.target).closest('.menu-button').length) {
+                $('.menu').addClass('hidden');
+            }
+        });
+
+        // 发布表单的提示
+        $('.publish-form').on('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+            $.post($(form).attr('action'))
+                .done(function() {
+                    alert('表单已成功发布！');
+                    location.reload(); // 刷新页面
+                })
+                .fail(function() {
+                    alert('发布表单时出错，请重试。');
+                });
+        });
+
+        // 停止收集的提示
+        $('.close-form').on('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+            $.post($(form).attr('action'))
+                .done(function() {
+                    alert('表单已停止收集！');
+                    location.reload(); // 刷新页面
+                })
+                .fail(function() {
+                    alert('停止收集时出错，请重试。');
+                });
+        });
+    });
+</script>
+
+<%- include('partials/footer') %>
